@@ -1,17 +1,24 @@
 use std::{
     fs,
     io::{prelude::*, BufReader},
+    thread,
+    time::Duration,
 };
+
+use basic_server_rust::ThreadPool;
 
 use std::net::{TcpListener, TcpStream};
 
 fn main() {
+    let pool = ThreadPool::new(4);
+
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         println!("Connection established!");
-        handler_func(stream)
+
+        pool.execute(|| handler_func(stream));
     }
 }
 
@@ -26,6 +33,9 @@ fn handler_func(mut stream: TcpStream) {
 
     let get = "GET / HTTP/1.1";
     let (status_line, file_name) = if http_request[0].starts_with(get) {
+        ("HTTP/1.1 200 OK", "hello.html")
+    } else if (http_request[0].starts_with("GET /sleep HTTP/1.1")) {
+        thread::sleep(Duration::from_secs(5));
         ("HTTP/1.1 200 OK", "hello.html")
     } else {
         ("HTTP/1.1 404 BAD REQUEST", "404.html")
